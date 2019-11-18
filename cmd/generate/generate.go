@@ -47,16 +47,6 @@ import (
 	statsd "istio.io/istio/mixer/adapter/statsd/config"
 	stdio "istio.io/istio/mixer/adapter/stdio/config"
 	zipkin "istio.io/istio/mixer/adapter/zipkin/config"
-	"istio.io/istio/mixer/template/apikey"
-	"istio.io/istio/mixer/template/authorization"
-	"istio.io/istio/mixer/template/checknothing"
-	"istio.io/istio/mixer/template/edge"
-	"istio.io/istio/mixer/template/listentry"
-	"istio.io/istio/mixer/template/logentry"
-	"istio.io/istio/mixer/template/metric"
-	"istio.io/istio/mixer/template/quota"
-	"istio.io/istio/mixer/template/reportnothing"
-	"istio.io/istio/mixer/template/tracespan"
 	"log"
 	"os"
 	"reflect"
@@ -67,6 +57,7 @@ import (
 )
 
 type Schema struct {
+	Instance                           policy.Instance
 	MeshConfig                         mesh.MeshConfig
 	ProxyConfig                        mesh.ProxyConfig
 	Attributes                         mixer.Attributes
@@ -143,16 +134,6 @@ type Schema struct {
 	StatsdMetricInfo                   statsd.Params_MetricInfo
 	Stdio                              stdio.Params
 	Zipkin                             zipkin.Params
-	APIKey                             apikey.InstanceMsg
-	Authorization                      authorization.InstanceMsg
-	CheckNothing                       checknothing.InstanceMsg
-	Edge                               edge.InstanceMsg
-	ListEntry                          listentry.InstanceMsg
-	LogEntry                           logentry.InstanceMsg
-	Metric                             metric.InstanceMsg
-	Quota                              quota.InstanceMsg
-	ReportNothing                      reportnothing.InstanceMsg
-	TraceSpan                          tracespan.InstanceMsg
 }
 
 // code adapted from https://kgrz.io/reading-files-in-go-an-overview.html#scanning-comma-seperated-string

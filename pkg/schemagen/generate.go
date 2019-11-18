@@ -18,12 +18,16 @@ package schemagen
 import (
 	"errors"
 	"fmt"
+	"github.com/gogo/protobuf/proto"
+	"istio.io/istio/mixer/template"
 	"path/filepath"
 	"reflect"
 	"sort"
 	"strings"
 	"time"
 )
+
+const templateInstanceMessageTypeName = "InstanceMsg"
 
 type PackageDescriptor struct {
 	GoPackage   string
@@ -299,31 +303,33 @@ func (g *schemaGenerator) javaType(t reflect.Type) string {
 	}
 }
 
-func transformTemplateName(original string, path string) (string, bool) {
+func transformTemplateName(original string, path string) (transformed string, isCRD bool) {
 	kind := "template"
 	var name = original
-	result := false
 	kindIndex := strings.Index(path, kind)
-	if kindIndex >= 0 && strings.Compare("InstanceMsg", name) == 0 {
+	if kindIndex >= 0 && templateInstanceMessageTypeName == name {
+		if strings.Contains(path, "kubernetesenv") {
+			return "Kubernetes", false
+		}
 		// extract specific type name from path
 		extractedTypeName := path[kindIndex+len(kind)+1:]
 		name = strings.Title(extractedTypeName)
-		result = true
+		isCRD = false
 	}
 
 	// same replacements should occur in IstioSpecRegistry.getCRDInfoFrom method
 	if strings.Contains(name, "entry") {
-		return strings.Replace(name, "entry", "Entry", -1), result
+		return strings.Replace(name, "entry", "Entry", -1), isCRD
 	} else if strings.Contains(name, "Msg") {
-		return strings.Replace(name, "Msg", "", -1), result
+		return strings.Replace(name, "Msg", "", -1), isCRD
 	} else if strings.Contains(name, "nothing") {
-		return strings.Replace(name, "nothing", "Nothing", -1), result
+		return strings.Replace(name, "nothing", "Nothing", -1), isCRD
 	} else if strings.Contains(name, "key") {
-		return strings.Replace(name, "key", "Key", -1), result
+		return strings.Replace(name, "key", "Key", -1), isCRD
 	} else if strings.Contains(name, "span") {
-		return strings.Replace(name, "span", "Span", -1), result
+		return strings.Replace(name, "span", "Span", -1), isCRD
 	} else {
-		return name, result
+		return name, isCRD
 	}
 }
 
@@ -332,7 +338,7 @@ func transformAdapterName(original string, path string) (string, bool) {
 	var name = original
 	result := false
 	kindIndex := strings.Index(path, kind)
-	if kindIndex >= 0 && strings.Compare("Params", name) == 0 {
+	if kindIndex >= 0 && "Params" == name {
 		// extract specific type name from path
 		extractedTypeName := path[kindIndex+len(kind)+1:]
 		slashIndex := strings.IndexRune(extractedTypeName, '/')
@@ -588,12 +594,7 @@ func (g *schemaGenerator) getStructProperties(t reflect.Type) map[string]JSONPro
 			continue
 		}
 
-		// Skip dockerImageMetadata field
 		path := pkgPath(t)
-		if path == "github.com/openshift/origin/pkg/image/api/v1" && t.Name() == "Image" && name == "dockerImageMetadata" {
-			continue
-		}
-
 		humanReadableFieldName := field.Type.Name() + " field " + name + " in " + path + "/" + t.Name()
 
 		desc := getFieldDescription(field)
@@ -662,9 +663,25 @@ func (g *schemaGenerator) getStructProperties(t reflect.Type) map[string]JSONPro
 	return props
 }
 
+func (g *schemaGenerator) templateInstanceFields(instanceProps map[string]JSONPropertyDescriptor) {
+	// retrieve supported templates
+	supportedTmplInfos := template.SupportedTmplInfo
+	for name, info := range supportedTmplInfos {
+		// each template registers the InstanceMsg type that interest us in its init function using proto.Register so use proto
+		// registry to retrieve it
+		t := proto.MessageType(info.Impl + "." + templateInstanceMessageTypeName)
+		// generate a property for the Instance
+		descriptor := g.getPropertyDescriptor(t, "", name+" template field generated for Instance")
+		instanceProps[name] = descriptor
+	}
+}
+
 func (g *schemaGenerator) generateObjectDescriptor(t reflect.Type) *JSONObjectDescriptor {
 	desc := JSONObjectDescriptor{AdditionalProperties: false}
 	desc.Properties = g.getStructProperties(t)
+	if t.Name() == "Instance" {
+		g.templateInstanceFields(desc.Properties)
+	}
 	return &desc
 }
 
