@@ -23,12 +23,16 @@ import java.util.Map;
 
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import me.snowdrop.istio.api.cexl.TypedValue;
+import me.snowdrop.istio.api.policy.v1beta1.Instance;
+import me.snowdrop.istio.api.policy.v1beta1.InstanceBuilder;
+import me.snowdrop.istio.api.policy.v1beta1.InstanceSpec;
 import me.snowdrop.istio.mixer.template.metric.Metric;
-import me.snowdrop.istio.mixer.template.metric.MetricBuilder;
 import me.snowdrop.istio.tests.BaseIstioTest;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -38,58 +42,71 @@ public class MetricTest extends BaseIstioTest {
     @Test
     public void metricRoundtripShouldWork() throws Exception {
         /*
-    apiVersion: "config.istio.io/v1alpha2"
-kind: metric
-metadata:
-  name: requestsize
-  namespace: istio-config-default
-spec:
-  value: request.size | 0
-  dimensions:
-    sourceService: source.service | "unknown"
-    sourceVersion: source.labels["version"] | "unknown"
-    destinationService: destination.service | "unknown"
-    destinationVersion: destination.labels["version"] | "unknown"
-    responseCode: response.code | 200
-  monitoredResourceType: '"UNSPECIFIED"'
-     */
-
-        Metric resource = new MetricBuilder()
-                .withNewMetadata()
-                .withName("requestsize")
-                .withNamespace("istio-config-default")
-                .endMetadata()
-                .withNewSpec()
-                .withValue(TypedValue.from("request.size | 0"))
-                .addToDimensions("sourceService", TypedValue.from("source.service | \"unknown\""))
-                .addToDimensions("sourceVersion", TypedValue.from("source.labels[\"version\"] | \"unknown\""))
-                .addToDimensions("destinationService", TypedValue.from("destination.service | \"unknown\""))
-                .addToDimensions("destinationVersion", TypedValue.from("destination.labels[\"version\"] | \"unknown\""))
-                .addToDimensions("responseCode", TypedValue.from("response.code | 200"))
-                .withMonitoredResourceType("UNSPECIFIED")
-                .endSpec()
-                .build();
-
+        apiVersion: "config.istio.io/v1alpha2"
+        kind: instance
+        metadata:
+          name: requestsize
+          namespace: istio-system
+        spec:
+          compiledTemplate: metric
+          params:
+            value: request.size | 0
+            dimensions:
+              source_version: source.labels["version"] | "unknown"
+              destination_service: destination.service.host | "unknown"
+              destination_version: destination.labels["version"] | "unknown"
+              response_code: response.code | 200
+            monitored_resource_type: '"UNSPECIFIED"'
+         */
+    
+        Instance resource = new InstanceBuilder()
+            .withNewMetadata().withName("requestsize").withNamespace("istio-system").endMetadata()
+            .withNewSpec().withCompiledTemplate("metric")
+            .withNewMetric()
+            .withValue(TypedValue.from("request.size | 0"))
+            .addToDimensions("sourceService", TypedValue.from("source.service | \"unknown\""))
+            .addToDimensions("sourceVersion", TypedValue.from("source.labels[\"version\"] | \"unknown\""))
+            .addToDimensions("destinationService", TypedValue.from("destination.service | \"unknown\""))
+            .addToDimensions("destinationVersion", TypedValue.from("destination.labels[\"version\"] | \"unknown\""))
+            .addToDimensions("responseCode", TypedValue.from("response.code | 200"))
+            .withMonitoredResourceType("UNSPECIFIED")
+            .endMetric()
+            .endSpec().build();
+    
         final String output = mapper.writeValueAsString(resource);
-
+    
         HasMetadata reloaded = mapper.readValue(output, HasMetadata.class);
-
+    
         assertEquals(resource, reloaded);
     }
-
+    
     @Test
     public void loadingFromYAMLShouldWork() throws Exception {
         ClassLoader classloader = Thread.currentThread().getContextClassLoader();
         InputStream is = classloader.getResourceAsStream("metric.yaml");
         final HasMetadata resource = mapper.readValue(is, HasMetadata.class);
-
-        assertEquals(resource.getKind(), "metric");
-
-        assertTrue(resource instanceof Metric);
-
-        final Metric metric = (Metric) resource;
-        assertEquals("1", metric.getSpec().getValue().getExpression());
-        final Map<String, TypedValue> dimensions = metric.getSpec().getDimensions();
+        
+        assertEquals(resource.getKind(), "instance");
+        
+        assertTrue(resource instanceof Instance);
+        final InstanceSpec spec = ((Instance) resource).getSpec();
+        assertEquals("metric", spec.getCompiledTemplate());
+        
+        final Metric metric = spec.getMetric();
+        assertNotNull(metric);
+        assertNull(spec.getApikey());
+        assertNull(spec.getAuthorization());
+        assertNull(spec.getChecknothing());
+        assertNull(spec.getEdge());
+        assertNull(spec.getKubernetes());
+        assertNull(spec.getListentry());
+        assertNull(spec.getLogentry());
+        assertNull(spec.getQuota());
+        assertNull(spec.getReportnothing());
+        assertNull(spec.getTracespan());
+        
+        assertEquals("1", metric.getValue().getExpression());
+        final Map<String, TypedValue> dimensions = metric.getDimensions();
         assertEquals(4, dimensions.size());
         assertTrue(dimensions.containsKey("source"));
         assertEquals("source.service | \"unknown\"", dimensions.get("source").getExpression());
