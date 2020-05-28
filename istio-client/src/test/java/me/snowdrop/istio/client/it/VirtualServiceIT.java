@@ -7,17 +7,7 @@ import java.util.Map;
 
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import me.snowdrop.istio.api.IstioResource;
-import me.snowdrop.istio.api.networking.v1alpha3.ExactMatchType;
-import me.snowdrop.istio.api.networking.v1alpha3.HTTPMatchRequest;
-import me.snowdrop.istio.api.networking.v1alpha3.HTTPMatchRequestBuilder;
-import me.snowdrop.istio.api.networking.v1alpha3.HTTPRoute;
-import me.snowdrop.istio.api.networking.v1alpha3.HttpStatusErrorType;
-import me.snowdrop.istio.api.networking.v1alpha3.NumberPort;
-import me.snowdrop.istio.api.networking.v1alpha3.PrefixMatchType;
-import me.snowdrop.istio.api.networking.v1alpha3.StringMatch;
-import me.snowdrop.istio.api.networking.v1alpha3.VirtualService;
-import me.snowdrop.istio.api.networking.v1alpha3.VirtualServiceBuilder;
-import me.snowdrop.istio.api.networking.v1alpha3.VirtualServiceSpec;
+import me.snowdrop.istio.api.networking.v1beta1.*;
 import me.snowdrop.istio.client.DefaultIstioClient;
 import me.snowdrop.istio.client.IstioClient;
 import org.junit.Test;
@@ -30,7 +20,7 @@ public class VirtualServiceIT {
     private final IstioClient istioClient = new DefaultIstioClient();
     
     /*
-  apiVersion: networking.istio.io/v1alpha3
+  apiVersion: networking.istio.io/v1beta1
   kind: VirtualService
   metadata:
   name: reviews-route
@@ -59,7 +49,7 @@ public class VirtualServiceIT {
         //given
         final String reviewsHost = "reviews.prod.svc.cluster.local";
         final VirtualService virtualService = new VirtualServiceBuilder()
-            .withApiVersion("networking.istio.io/v1alpha3")
+            .withApiVersion("networking.istio.io/v1beta1")
             .withNewMetadata().withName("reviews-route").endMetadata()
             .withNewSpec()
             .addToHosts(reviewsHost)
@@ -80,7 +70,7 @@ public class VirtualServiceIT {
             .build();
         
         //when
-        final VirtualService resultResource = istioClient.virtualService().create(virtualService);
+        final VirtualService resultResource = istioClient.v1beta1VirtualService().create(virtualService);
     
         //then
         assertThat(resultResource).isNotNull().satisfies(istioResource -> {
@@ -135,7 +125,7 @@ public class VirtualServiceIT {
             });
     
             //when
-            final Boolean deleteResult = istioClient.virtualService().delete(resultResource);
+            final Boolean deleteResult = istioClient.v1beta1VirtualService().delete(resultResource);
     
             //then
             assertThat(deleteResult).isTrue();
@@ -143,7 +133,7 @@ public class VirtualServiceIT {
     }
     
     /*
-  apiVersion: "networking.istio.io/v1alpha3"
+  apiVersion: "networking.istio.io/v1beta1"
   kind: "VirtualService"
   metadata:
   name: "reviews-route"
@@ -168,29 +158,27 @@ public class VirtualServiceIT {
     public void checkVirtualServiceWithPortSelector() {
         final String reviewsHost = "reviews.prod.svc.cluster.local";
         final VirtualService virtualService = new VirtualServiceBuilder()
-            .withApiVersion("networking.istio.io/v1alpha3")
+            .withApiVersion("networking.istio.io/v1beta1")
             .withNewMetadata().withName("reviews-route2").endMetadata()
             .withNewSpec()
             .addToHosts(reviewsHost)
             .addNewHttp()
             .addNewRoute()
             .withNewDestination().withHost(reviewsHost).withSubset("v2").withNewPort()
-            .withNewNumberPort()
-            .withNumber(9090).endNumberPort().endPort().endDestination()
+            .withNumber(9090).endPort().endDestination()
             .endRoute()
             .endHttp()
             .addNewHttp()
             .addNewRoute()
             .withNewDestination().withHost(reviewsHost).withSubset("v1").withNewPort()
-            .withNewNumberPort()
-            .withNumber(9090).endNumberPort().endPort().endDestination()
+            .withNumber(9090).endPort().endDestination()
             .endRoute()
             .endHttp()
             .endSpec()
             .build();
         
         //when
-        final VirtualService resultResource = istioClient.virtualService().create(virtualService);
+        final VirtualService resultResource = istioClient.v1beta1VirtualService().create(virtualService);
     
         //then
         assertThat(resultResource).isNotNull().satisfies(istioResource -> {
@@ -230,15 +218,14 @@ public class VirtualServiceIT {
                 .flatExtracting("route")
                 .extracting("destination")
                 .extracting("port")
-                .extracting("port")
-                .extracting("class", "number")
+                .extracting("number")
                 .containsOnly(
-                    tuple(NumberPort.class, 9090),
-                    tuple(NumberPort.class, 9090)
+                    9090,
+                    9090
                 );
             
             //when
-            final Boolean deleteResult = istioClient.virtualService().delete(resultResource);
+            final Boolean deleteResult = istioClient.v1beta1VirtualService().delete(resultResource);
     
             //then
             assertThat(deleteResult).isTrue();
@@ -246,7 +233,7 @@ public class VirtualServiceIT {
     }
     
     /*
-  apiVersion: networking.istio.io/v1alpha3
+  apiVersion: networking.istio.io/v1beta1
   kind: VirtualService
   metadata:
     name: ratings-route
@@ -266,7 +253,7 @@ public class VirtualServiceIT {
     @Test
     public void checkVirtualServiceAbort() {
         final String ratingsHost = "ratings.prod.svc.cluster.local";
-        final VirtualService resultResource = istioClient.virtualService()
+        final VirtualService resultResource = istioClient.v1beta1VirtualService()
             .createNew()
             .withNewMetadata().withName("ratings-route").endMetadata()
             .withNewSpec()
@@ -326,7 +313,7 @@ public class VirtualServiceIT {
             });
     
             //when
-            final Boolean deleteResult = istioClient.virtualService().delete(resultResource);
+            final Boolean deleteResult = istioClient.v1beta1VirtualService().delete(resultResource);
     
             //then
             assertThat(deleteResult).isTrue();
@@ -339,7 +326,7 @@ public class VirtualServiceIT {
         try {
             final String ratingsHost = "ratings.prod.svc.cluster.local";
             final VirtualService virtualService = new VirtualServiceBuilder()
-                .withApiVersion("networking.istio.io/v1alpha3")
+                .withApiVersion("networking.istio.io/v1beta1")
                 .withNewMetadata().withName("ratings-route").endMetadata()
                 .withNewSpec()
                 .addToHosts(ratingsHost)
@@ -350,7 +337,9 @@ public class VirtualServiceIT {
                 .endRoute()
                 .withNewFault()
                 .withNewAbort()
-                .withPercent(10)
+                .withNewPercentage()
+                    .withValue(10.0)
+                    .endPercentage()
                 .withNewHttpStatusErrorType(400)
                 .endAbort()
                 .endFault()
@@ -363,7 +352,7 @@ public class VirtualServiceIT {
             assertThat(resource).isNotNull().satisfies(r -> assertThat(r.getSpec()).isInstanceOf(VirtualServiceSpec.class));
         } finally {
             if (resource != null) {
-                istioClient.virtualService().delete((VirtualService) resource);
+                istioClient.v1beta1VirtualService().delete((VirtualService) resource);
             }
         }
         
@@ -378,7 +367,7 @@ public class VirtualServiceIT {
             });
         } finally {
             if (resources != null) {
-                istioClient.virtualService().delete((VirtualService) resources.get(0));
+                istioClient.v1beta1VirtualService().delete((VirtualService) resources.get(0));
             }
         }
     }
@@ -401,7 +390,7 @@ public class VirtualServiceIT {
             HTTPMatchRequest req = new HTTPMatchRequestBuilder().withHeaders(matchMap)
                 .build();
             
-            done = istioClient.virtualService().withName("reviews-route")
+            done = istioClient.v1beta1VirtualService().withName("reviews-route")
                 .edit().editSpec()
                 .removeMatchingFromHttp(h -> h.hasMatchingMatch(m -> m.hasHeaders() && m.getHeaders().equals(matchMap)) && h.hasMatchingRoute(r -> r.buildDestination().getHost().equals("service-coke")))
                 .endSpec().done();
@@ -411,7 +400,7 @@ public class VirtualServiceIT {
                 .doesNotContain(req);
         } finally {
             if (done != null) {
-                istioClient.virtualService().delete(done);
+                istioClient.v1beta1VirtualService().delete(done);
             }
         }
     }

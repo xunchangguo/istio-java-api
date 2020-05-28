@@ -220,25 +220,31 @@ func (g *schemaGenerator) javaType(t reflect.Type) string {
 
 	path := pkgPath(t)
 
-	// transform type name if needed, checking if the type is a top-level one and thus a CRD
-	var isCRD = true
-	if strings.Contains(path, "template") {
-		name, isCRD = transformTemplateName(name, path)
-	} else if strings.Contains(path, "adapter") {
-		name, isCRD = transformAdapterName(name, path)
-	}
+	if strings.Contains(path, "istio.io") {
+		// transform type name if needed, checking if the type is a top-level one and thus a CRD
+		var isCRD = true
+		if strings.Contains(path, "template") {
+			name, isCRD = transformTemplateName(name, path)
+		} else if strings.Contains(path, "adapter") {
+			name, isCRD = transformAdapterName(name, path)
+		}
 
-	// if the type name is still marked as CRD, add Spec suffix to its name if it's a known CRD name
-	// we need this "double" check because some adapter/template classes have the same name as top-level CRDs (e.g. Quota)
-	if isCRD {
-		lower := strings.ToLower(name)
-		crdDesc, ok := g.crds[lower]
-		if ok {
-			name += "Spec"
-			g.crds[lower] = CrdDescriptor{
-				Name:    crdDesc.Name,
-				CrdType: crdDesc.CrdType,
-				Visited: true,
+		// if the type name is still marked as CRD, add Spec suffix to its name if it's a known CRD name
+		// we need this "double" check because some adapter/template classes have the same name as top-level CRDs (e.g. Quota)
+		if isCRD {
+			// attempt to retrieve the version from the path
+			version := filepath.Base(path)
+			if strings.HasPrefix(version, "v") {
+				lower := version + "." + strings.ToLower(name)
+				crdDesc, ok := g.crds[lower]
+				if ok {
+					name += "Spec"
+					g.crds[lower] = CrdDescriptor{
+						Name:    crdDesc.Name,
+						CrdType: crdDesc.CrdType,
+						Visited: true,
+					}
+				}
 			}
 		}
 	}
@@ -259,6 +265,9 @@ func (g *schemaGenerator) javaType(t reflect.Type) string {
 		case "Timestamp":
 			return "me.snowdrop.istio.api.TimeStamp"
 		case "Value":
+			if strings.Contains(pkgDesc.GoPackage, "protobuf") {
+				return pkgDesc.JavaPackage + "." + name
+			}
 			return "me.snowdrop.istio.api.cexl.TypedValue"
 		case "AttributeValue":
 			return "me.snowdrop.istio.api.cexl.TypedValue"
@@ -434,20 +443,28 @@ func (g *schemaGenerator) generate(t reflect.Type, strict bool) (*JSONSchema, er
 // Compute a qualified name formatted as expected by interface maps to check for candidate interfaces
 func getQualifiedInterfaceName(k reflect.Type) string {
 	typeName := k.Name()
-	// first get the pkg path for the type and remove the istio.io prefix
-	path := strings.TrimPrefix(pkgPath(k), "istio.io/")
+	path := pkgPath(k)
 
-	// if we're looking at an adapter or template type, we need to remove the "istio" prefix
-	isAdapter := strings.Contains(path, "adapter")
-	isTemplate := strings.Contains(path, "template")
-	if isAdapter || isTemplate {
-		path = strings.TrimPrefix(path, "istio/")
+	// special case for # isValue_Kind field kind in github.com/gogo/protobuf/types/Value
+	if strings.HasPrefix(path, "github.com/gogo/protobuf/types") {
+		path = "api"
+	} else {
+		// first get the pkg path for the type and remove the istio.io prefix
+		path = strings.TrimPrefix(path, "istio.io/")
 
-		// if we're dealing with an adapter, we also need to remove the trailing "config" package
-		if isAdapter {
-			path = strings.Replace(path, "/config", "", 1)
+		// if we're looking at an adapter or template type, we need to remove the "istio" prefix
+		isAdapter := strings.Contains(path, "adapter")
+		isTemplate := strings.Contains(path, "template")
+		if isAdapter || isTemplate {
+			path = strings.TrimPrefix(path, "istio/")
+
+			// if we're dealing with an adapter, we also need to remove the trailing "config" package
+			if isAdapter {
+				path = strings.Replace(path, "/config", "", 1)
+			}
 		}
 	}
+
 	// finally we replace the path separators by '.' to match the Java package name as defined in generate/generate#loadInterfacesData
 	path = strings.Replace(path, "/", ".", -1) + "." + typeName
 	return path
@@ -560,7 +577,13 @@ func (g *schemaGenerator) getPropertyDescriptor(t reflect.Type, desc string, hum
 		name := getQualifiedInterfaceName(t)
 		interfaceType, ok := g.interfacesMap[name]
 		if !ok {
-			g.unknownInterfaces = append(g.unknownInterfaces, humanReadableFieldName)
+			// special cases for AttributeValue and Value which are handled by TypedValue
+			switch name {
+			case "api.mixer.v1.isAttributes_AttributeValue_Value":
+			case "api.policy.v1beta1.isValue_Value":
+			default:
+				g.unknownInterfaces = append(g.unknownInterfaces, humanReadableFieldName)
+			}
 			interfaceType = g.javaType(t)
 		}
 
@@ -577,6 +600,13 @@ func (g *schemaGenerator) getPropertyDescriptor(t reflect.Type, desc string, hum
 
 func (g *schemaGenerator) getStructProperties(t reflect.Type) map[string]JSONPropertyDescriptor {
 	props := map[string]JSONPropertyDescriptor{}
+
+	// specific handling for CorsPolicy.allowOrigin vs. allowOrigins
+	const corsPolicyTypeName = "CorsPolicy"
+	const allowOriginFieldName = "allowOrigin"
+	const renamedAllowOriginFieldName = "deprecatedAllowOrigin"
+	isCorsPolicy := t.Name() == corsPolicyTypeName
+
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
 		if len(field.PkgPath) > 0 { // Skip private fields
@@ -588,12 +618,12 @@ func (g *schemaGenerator) getStructProperties(t reflect.Type) map[string]JSONPro
 			continue
 		}
 
-		// Skip dockerImageMetadata field
-		path := pkgPath(t)
-		if path == "github.com/openshift/origin/pkg/image/api/v1" && t.Name() == "Image" && name == "dockerImageMetadata" {
-			continue
+		// rename allowOrigin to deprecatedAllowOrigin on CorsPolicy
+		if isCorsPolicy && name == allowOriginFieldName {
+			name = renamedAllowOriginFieldName
 		}
 
+		path := pkgPath(t)
 		humanReadableFieldName := field.Type.Name() + " field " + name + " in " + path + "/" + t.Name()
 
 		desc := getFieldDescription(field)

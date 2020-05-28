@@ -4,11 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 
 import java.util.HashMap;
-import me.snowdrop.istio.api.networking.v1alpha3.DestinationRule;
-import me.snowdrop.istio.api.networking.v1alpha3.DestinationRuleBuilder;
-import me.snowdrop.istio.api.networking.v1alpha3.DestinationRuleSpec;
-import me.snowdrop.istio.api.networking.v1alpha3.Subset;
-import me.snowdrop.istio.api.networking.v1alpha3.TLSSettingsMode;
+import me.snowdrop.istio.api.networking.v1beta1.DestinationRule;
+import me.snowdrop.istio.api.networking.v1beta1.DestinationRuleBuilder;
+import me.snowdrop.istio.api.networking.v1beta1.DestinationRuleSpec;
+import me.snowdrop.istio.api.networking.v1beta1.Subset;
+import me.snowdrop.istio.api.networking.v1beta1.TLSSettingsMode;
 import me.snowdrop.istio.client.DefaultIstioClient;
 import me.snowdrop.istio.client.IstioClient;
 import org.assertj.core.api.iterable.Extractor;
@@ -19,7 +19,7 @@ public class DestinationRuleIT {
     private final IstioClient istioClient = new DefaultIstioClient();
 
     /*
-    apiVersion: networking.istio.io/v1alpha3
+    apiVersion: networking.istio.io/v1beta1
     kind: DestinationRule
     metadata:
       name: spring-boot-istio-routing-service
@@ -40,7 +40,7 @@ public class DestinationRuleIT {
     public void checkDestinationRuleWithTrafficPolicy() {
         //given
         final DestinationRule destinationRule = new DestinationRuleBuilder()
-                .withApiVersion("networking.istio.io/v1alpha3")
+                .withApiVersion("networking.istio.io/v1beta1")
                 .withNewMetadata()
                 .withName("rule")
                 .endMetadata()
@@ -61,7 +61,7 @@ public class DestinationRuleIT {
                 .build();
 
         //when
-        final DestinationRule resultResource = istioClient.destinationRule().create(destinationRule);
+        final DestinationRule resultResource = istioClient.v1beta1DestinationRule().create(destinationRule);
 
         //then
         assertThat(resultResource).isNotNull().satisfies(istioResource -> {
@@ -101,7 +101,7 @@ public class DestinationRuleIT {
         });
 
         //when
-        final Boolean deleteResult = istioClient.destinationRule().delete(resultResource);
+        final Boolean deleteResult = istioClient.v1beta1DestinationRule().delete(resultResource);
 
         //then
         assertThat(deleteResult).isTrue();

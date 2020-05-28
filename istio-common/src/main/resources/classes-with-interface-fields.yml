@@ -1,6 +1,5 @@
 # Currently ignored interfaces (or mapped to TypedValue):
 # isAttributes_AttributeValue_Value field value in istio.io/api/mixer/v1/Attributes_AttributeValue
-# isValue_Kind field kind in github.com/gogo/protobuf/types/Value
 # isValue_Value field value in istio.io/api/policy/v1beta1/Value
 classes:
   - class: me.snowdrop.istio.api.networking.v1alpha3.Abort
@@ -10,12 +9,28 @@ classes:
       httpStatus: isHTTPFaultInjection_Abort_ErrorType
       http2Error: isHTTPFaultInjection_Abort_ErrorType
       percentage: me.snowdrop.istio.api.networking.v1alpha3.Percent
+  - class: me.snowdrop.istio.api.networking.v1beta1.Abort
+    fields:
+      percent: integer
+      grpcStatus: isHTTPFaultInjection_Abort_ErrorType
+      httpStatus: isHTTPFaultInjection_Abort_ErrorType
+      http2Error: isHTTPFaultInjection_Abort_ErrorType
+      percentage: me.snowdrop.istio.api.networking.v1beta1.Percent
   - class: me.snowdrop.istio.api.networking.v1alpha3.Delay
     fields:
       percent: integer
       exponentialDelay: isHTTPFaultInjection_Delay_HttpDelayType
       fixedDelay: isHTTPFaultInjection_Delay_HttpDelayType
+  - class: me.snowdrop.istio.api.networking.v1beta1.Delay
+    fields:
+      percent: integer
+      exponentialDelay: isHTTPFaultInjection_Delay_HttpDelayType
+      fixedDelay: isHTTPFaultInjection_Delay_HttpDelayType
   - class: me.snowdrop.istio.api.networking.v1alpha3.LoadBalancerSettings
+    fields:
+      simple: isLoadBalancerSettings_LbPolicy
+      consistentHash: isLoadBalancerSettings_LbPolicy
+  - class: me.snowdrop.istio.api.networking.v1beta1.LoadBalancerSettings
     fields:
       simple: isLoadBalancerSettings_LbPolicy
       consistentHash: isLoadBalancerSettings_LbPolicy
@@ -32,7 +47,18 @@ classes:
       exact: isStringMatch_MatchType
       prefix: isStringMatch_MatchType
       regex: isStringMatch_MatchType
+  - class: me.snowdrop.istio.api.networking.v1beta1.StringMatch
+    fields:
+      exact: isStringMatch_MatchType
+      prefix: isStringMatch_MatchType
+      regex: isStringMatch_MatchType
   - class: me.snowdrop.istio.api.networking.v1alpha3.ConsistentHashLB
+    fields:
+      httpHeaderName: isLoadBalancerSettings_ConsistentHashLB_HashKey
+      httpCookie: isLoadBalancerSettings_ConsistentHashLB_HashKey
+      minimumRingSize: integer
+      useSourceIp: isLoadBalancerSettings_ConsistentHashLB_HashKey
+  - class: me.snowdrop.istio.api.networking.v1beta1.ConsistentHashLB
     fields:
       httpHeaderName: isLoadBalancerSettings_ConsistentHashLB_HashKey
       httpCookie: isLoadBalancerSettings_ConsistentHashLB_HashKey
@@ -74,3 +100,16 @@ classes:
       prefix: isStringMatch_MatchType
       regex: isStringMatch_MatchType
       suffix: isStringMatch_MatchType
+  - class: me.snowdrop.istio.api.networking.v1alpha3.EnvoyConfigObjectMatch
+    fields:
+      listener: isEnvoyFilter_EnvoyConfigObjectMatch_ObjectTypes
+      routeConfiguration: isEnvoyFilter_EnvoyConfigObjectMatch_ObjectTypes
+      cluster: isEnvoyFilter_EnvoyConfigObjectMatch_ObjectTypes
+  - class: me.snowdrop.istio.api.Value
+    fields:
+      nullValue: isValue_Kind
+      numberValue: isValue_Kind
+      stringValue: isValue_Kind
+      boolValue: isValue_Kind
+      structValue: isValue_Kind
+      listValue: isValue_Kind

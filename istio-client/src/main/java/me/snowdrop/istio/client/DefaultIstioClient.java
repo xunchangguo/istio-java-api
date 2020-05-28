@@ -26,39 +26,35 @@ import me.snowdrop.istio.api.IstioResource;
 import me.snowdrop.istio.api.authentication.v1alpha1.DoneablePolicy;
 import me.snowdrop.istio.api.authentication.v1alpha1.Policy;
 import me.snowdrop.istio.api.authentication.v1alpha1.PolicyList;
-import me.snowdrop.istio.api.networking.v1alpha3.DestinationRule;
-import me.snowdrop.istio.api.networking.v1alpha3.DestinationRuleList;
-import me.snowdrop.istio.api.networking.v1alpha3.DoneableDestinationRule;
+import me.snowdrop.istio.api.networking.v1beta1.DestinationRule;
+import me.snowdrop.istio.api.networking.v1beta1.DestinationRuleList;
+import me.snowdrop.istio.api.networking.v1beta1.DoneableDestinationRule;
 import me.snowdrop.istio.api.networking.v1alpha3.DoneableEnvoyFilter;
-import me.snowdrop.istio.api.networking.v1alpha3.DoneableGateway;
-import me.snowdrop.istio.api.networking.v1alpha3.DoneableServiceEntry;
-import me.snowdrop.istio.api.networking.v1alpha3.DoneableVirtualService;
+import me.snowdrop.istio.api.networking.v1beta1.DoneableGateway;
+import me.snowdrop.istio.api.networking.v1beta1.DoneableServiceEntry;
+import me.snowdrop.istio.api.networking.v1beta1.DoneableVirtualService;
 import me.snowdrop.istio.api.networking.v1alpha3.EnvoyFilter;
 import me.snowdrop.istio.api.networking.v1alpha3.EnvoyFilterList;
-import me.snowdrop.istio.api.networking.v1alpha3.Gateway;
-import me.snowdrop.istio.api.networking.v1alpha3.GatewayList;
-import me.snowdrop.istio.api.networking.v1alpha3.ServiceEntry;
-import me.snowdrop.istio.api.networking.v1alpha3.ServiceEntryList;
-import me.snowdrop.istio.api.networking.v1alpha3.VirtualService;
-import me.snowdrop.istio.api.networking.v1alpha3.VirtualServiceList;
-import me.snowdrop.istio.api.policy.v1beta1.DoneableRule;
-import me.snowdrop.istio.api.policy.v1beta1.Rule;
-import me.snowdrop.istio.api.policy.v1beta1.RuleList;
+import me.snowdrop.istio.api.networking.v1beta1.Gateway;
+import me.snowdrop.istio.api.networking.v1beta1.GatewayList;
+import me.snowdrop.istio.api.networking.v1beta1.ServiceEntry;
+import me.snowdrop.istio.api.networking.v1beta1.ServiceEntryList;
+import me.snowdrop.istio.api.networking.v1beta1.VirtualService;
+import me.snowdrop.istio.api.networking.v1beta1.VirtualServiceList;
 import me.snowdrop.istio.api.rbac.v1alpha1.DoneableServiceRole;
 import me.snowdrop.istio.api.rbac.v1alpha1.DoneableServiceRoleBinding;
 import me.snowdrop.istio.api.rbac.v1alpha1.ServiceRole;
 import me.snowdrop.istio.api.rbac.v1alpha1.ServiceRoleBinding;
 import me.snowdrop.istio.api.rbac.v1alpha1.ServiceRoleBindingList;
 import me.snowdrop.istio.api.rbac.v1alpha1.ServiceRoleList;
-import me.snowdrop.istio.client.internal.operation.DestinationRuleOperationImpl;
-import me.snowdrop.istio.client.internal.operation.EnvoyFilterOperationImpl;
-import me.snowdrop.istio.client.internal.operation.GatewayOperationImpl;
-import me.snowdrop.istio.client.internal.operation.PolicyOperationImpl;
-import me.snowdrop.istio.client.internal.operation.RuleOperationImpl;
-import me.snowdrop.istio.client.internal.operation.ServiceEntryOperationImpl;
-import me.snowdrop.istio.client.internal.operation.ServiceRoleBindingOperationImpl;
-import me.snowdrop.istio.client.internal.operation.ServiceRoleOperationImpl;
-import me.snowdrop.istio.client.internal.operation.VirtualServiceOperationImpl;
+import me.snowdrop.istio.client.internal.operation.authentication.v1alpha1.PolicyOperationImpl;
+import me.snowdrop.istio.client.internal.operation.networking.v1alpha3.EnvoyFilterOperationImpl;
+import me.snowdrop.istio.client.internal.operation.networking.v1beta1.DestinationRuleOperationImpl;
+import me.snowdrop.istio.client.internal.operation.networking.v1beta1.GatewayOperationImpl;
+import me.snowdrop.istio.client.internal.operation.networking.v1beta1.ServiceEntryOperationImpl;
+import me.snowdrop.istio.client.internal.operation.networking.v1beta1.VirtualServiceOperationImpl;
+import me.snowdrop.istio.client.internal.operation.rbac.v1alpha1.ServiceRoleBindingOperationImpl;
+import me.snowdrop.istio.client.internal.operation.rbac.v1alpha1.ServiceRoleOperationImpl;
 import okhttp3.OkHttpClient;
 
 public class DefaultIstioClient extends BaseClient implements NamespacedIstioClient {
@@ -92,60 +88,65 @@ public class DefaultIstioClient extends BaseClient implements NamespacedIstioCli
     @Override
     public FunctionCallable<NamespacedIstioClient> withRequestConfig(RequestConfig requestConfig) {
         return new WithRequestCallable<NamespacedIstioClient>(this, requestConfig);
-    }    
-
-    @Override
-    public AdapterDsl adapter() {
-        return new AdapterClient(getHttpClient(), getConfiguration());
     }
 
     @Override
-    public MixerDsl mixer() {
-        return new MixerClient(getHttpClient(), getConfiguration());
-    }
-
-    @Override
-    public MixedOperation<Policy, PolicyList, DoneablePolicy, Resource<Policy, DoneablePolicy>> policy() {
+    public MixedOperation<Policy, PolicyList, DoneablePolicy, Resource<Policy, DoneablePolicy>> v1alpha1Policy() {
         return new PolicyOperationImpl(getHttpClient(), getConfiguration());
     }
 
     @Override
-    public MixedOperation<DestinationRule, DestinationRuleList, DoneableDestinationRule, Resource<DestinationRule, DoneableDestinationRule>> destinationRule() {
+    public MixedOperation<DestinationRule, DestinationRuleList, DoneableDestinationRule, Resource<DestinationRule, DoneableDestinationRule>> v1beta1DestinationRule() {
         return new DestinationRuleOperationImpl(getHttpClient(), getConfiguration());
     }
 
     @Override
-    public MixedOperation<EnvoyFilter, EnvoyFilterList, DoneableEnvoyFilter, Resource<EnvoyFilter, DoneableEnvoyFilter>> envoyFilter() {
+    public MixedOperation<me.snowdrop.istio.api.networking.v1alpha3.DestinationRule, me.snowdrop.istio.api.networking.v1alpha3.DestinationRuleList, me.snowdrop.istio.api.networking.v1alpha3.DoneableDestinationRule, Resource<me.snowdrop.istio.api.networking.v1alpha3.DestinationRule, me.snowdrop.istio.api.networking.v1alpha3.DoneableDestinationRule>> v1alpha3DestinationRule() {
+        return new me.snowdrop.istio.client.internal.operation.networking.v1alpha3.DestinationRuleOperationImpl(getHttpClient(), getConfiguration());
+    }
+
+    @Override
+    public MixedOperation<EnvoyFilter, EnvoyFilterList, DoneableEnvoyFilter, Resource<EnvoyFilter, DoneableEnvoyFilter>> v1alpha3EnvoyFilter() {
         return new EnvoyFilterOperationImpl(getHttpClient(), getConfiguration());
     }
 
     @Override
-    public MixedOperation<Gateway, GatewayList, DoneableGateway, Resource<Gateway, DoneableGateway>> gateway() {
+    public MixedOperation<Gateway, GatewayList, DoneableGateway, Resource<Gateway, DoneableGateway>> v1beta1Gateway() {
         return new GatewayOperationImpl(getHttpClient(), getConfiguration());
     }
 
     @Override
-    public MixedOperation<ServiceEntry, ServiceEntryList, DoneableServiceEntry, Resource<ServiceEntry, DoneableServiceEntry>> serviceEntry() {
+    public MixedOperation<me.snowdrop.istio.api.networking.v1alpha3.Gateway, me.snowdrop.istio.api.networking.v1alpha3.GatewayList, me.snowdrop.istio.api.networking.v1alpha3.DoneableGateway, Resource<me.snowdrop.istio.api.networking.v1alpha3.Gateway, me.snowdrop.istio.api.networking.v1alpha3.DoneableGateway>> v1alpha3Gateway() {
+        return new me.snowdrop.istio.client.internal.operation.networking.v1alpha3.GatewayOperationImpl(getHttpClient(), getConfiguration());
+    }
+
+    @Override
+    public MixedOperation<ServiceEntry, ServiceEntryList, DoneableServiceEntry, Resource<ServiceEntry, DoneableServiceEntry>> v1beta1ServiceEntry() {
         return new ServiceEntryOperationImpl(getHttpClient(), getConfiguration());
     }
 
     @Override
-    public MixedOperation<VirtualService, VirtualServiceList, DoneableVirtualService, Resource<VirtualService, DoneableVirtualService>> virtualService() {
+    public MixedOperation<me.snowdrop.istio.api.networking.v1alpha3.ServiceEntry, me.snowdrop.istio.api.networking.v1alpha3.ServiceEntryList, me.snowdrop.istio.api.networking.v1alpha3.DoneableServiceEntry, Resource<me.snowdrop.istio.api.networking.v1alpha3.ServiceEntry, me.snowdrop.istio.api.networking.v1alpha3.DoneableServiceEntry>> v1alpha3ServiceEntry() {
+        return new me.snowdrop.istio.client.internal.operation.networking.v1alpha3.ServiceEntryOperationImpl(getHttpClient(), getConfiguration());
+    }
+
+    @Override
+    public MixedOperation<VirtualService, VirtualServiceList, DoneableVirtualService, Resource<VirtualService, DoneableVirtualService>> v1beta1VirtualService() {
         return new VirtualServiceOperationImpl(getHttpClient(), getConfiguration());
     }
 
     @Override
-    public MixedOperation<Rule, RuleList, DoneableRule, Resource<Rule, DoneableRule>> rule() {
-        return new RuleOperationImpl(getHttpClient(), getConfiguration());
+    public MixedOperation<me.snowdrop.istio.api.networking.v1alpha3.VirtualService, me.snowdrop.istio.api.networking.v1alpha3.VirtualServiceList, me.snowdrop.istio.api.networking.v1alpha3.DoneableVirtualService, Resource<me.snowdrop.istio.api.networking.v1alpha3.VirtualService, me.snowdrop.istio.api.networking.v1alpha3.DoneableVirtualService>> v1alpha3VirtualService() {
+        return new me.snowdrop.istio.client.internal.operation.networking.v1alpha3.VirtualServiceOperationImpl(getHttpClient(), getConfiguration());
     }
 
     @Override
-    public MixedOperation<ServiceRoleBinding, ServiceRoleBindingList, DoneableServiceRoleBinding, Resource<ServiceRoleBinding, DoneableServiceRoleBinding>> serviceRoleBinding() {
+    public MixedOperation<ServiceRoleBinding, ServiceRoleBindingList, DoneableServiceRoleBinding, Resource<ServiceRoleBinding, DoneableServiceRoleBinding>> v1alpha1ServiceRoleBinding() {
         return new ServiceRoleBindingOperationImpl(getHttpClient(), getConfiguration());
     }
 
     @Override
-    public MixedOperation<ServiceRole, ServiceRoleList, DoneableServiceRole, Resource<ServiceRole, DoneableServiceRole>> serviceRole() {
+    public MixedOperation<ServiceRole, ServiceRoleList, DoneableServiceRole, Resource<ServiceRole, DoneableServiceRole>> v1alpha1ServiceRole() {
         return new ServiceRoleOperationImpl(getHttpClient(), getConfiguration());
     }
 

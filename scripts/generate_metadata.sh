@@ -9,11 +9,6 @@ ADAPTERS_TMP=${DECL_DIR}/adapters_dir.tmp
 TEMPLATES_TMP=${DECL_DIR}/templates_dir.tmp
 PACKAGES_CSV=${DECL_DIR}/packages.csv
 
-# Remove previously generated lines
-sed -e '/##/q' ${PACKAGES_CSV} >${PACKAGES_CSV}.new
-rm ${PACKAGES_CSV}
-mv ${PACKAGES_CSV}.new ${PACKAGES_CSV}
-
 function istioVersion() {
   istioVersion=$(curl -L -s https://api.github.com/repos/istio/istio/releases |
     grep tag_name | sed "s/ *\"tag_name\": *\"\\(.*\\)\",*/\\1/" |
@@ -30,22 +25,29 @@ elif [ -n "$1" ]; then
 else
   ISTIO_VERSION=$(istioVersion)
 fi
+
+# Remove previously generated lines
+sed -e '/##/q' ${PACKAGES_CSV} >${PACKAGES_CSV}.new
+rm ${PACKAGES_CSV}
+mv ${PACKAGES_CSV}.new ${PACKAGES_CSV}
+
+echo "Using Istio version ${ISTIO_VERSION}"
 ISTIO_DIR="istio-$ISTIO_VERSION"
 if [ ! -d "$ISTIO_DIR" ]; then
   # if istio version is not already downloaded, download it
-  curl -L https://git.io/getLatestIstio | ISTIO_VERSION="${ISTIO_VERSION}" sh -
+  curl -L https://github.com/istio/istio/archive/"${ISTIO_VERSION}".zip --output "${ISTIO_VERSION}".zip
+  unzip "${ISTIO_VERSION}".zip
+  rm -f "${ISTIO_VERSION}".zip
 else
   echo "Istio version $ISTIO_VERSION is already present locally, using it"
 fi
 
-echo "Using Istio version ${ISTIO_VERSION}"
 go get istio.io/istio@"${ISTIO_VERSION}"
 go get istio.io/api@"${ISTIO_VERSION}"
 
 # Generate CRD information
-more "$ISTIO_DIR"/install/kubernetes/helm/istio-init/files/crd*.yaml |
-  #  yq '"\(.spec.names.kind)=\(.metadata.name) | istio=\(.metadata.labels.istio // "") | version=\(.spec.versions[0].name)"' | # later CRD defs use versions instead of version
-  yq -r '"\(.spec.names.kind)=\(.metadata.name)| istio=\(.metadata.labels.istio // "")| version=\(.spec.version)"' |
+cat "$ISTIO_DIR"/install/kubernetes/helm/istio-init/files/crd*.yaml |
+  yq -r '.spec as $s | .metadata as $m | $s.versions[] | "\(.name).\($s.names.kind)=\($m.name) | istio=\($m.labels.istio // "")"' |
   grep istio.io |
   sort -f >"${CRD_FILE}"
 
